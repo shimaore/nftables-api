@@ -44,6 +44,7 @@ import (
 	"runtime"
 
 	"github.com/apiban/nftlib"
+	"github.com/palner/pgrtools/pgparse"
 	"github.com/tidwall/sjson"
 )
 
@@ -111,10 +112,9 @@ func main() {
 	router.HandleFunc("GET /removeip/{ipaddress}", removeIPAddress)
 	router.HandleFunc("GET /unblock/{ipaddress}", removeIPAddress)
 	router.HandleFunc("GET /unblockip/{ipaddress}", removeIPAddress)
-	// coming later, long day
-	//router.HandleFunc("DELETE /", deleteHandle)
-	//router.HandleFunc("POST /", postHandle)
-	//router.HandleFunc("PUT /", putHandle)
+	router.HandleFunc("DELETE /", jsonHandleAddress)
+	router.HandleFunc("POST /", jsonHandleAddress)
+	router.HandleFunc("PUT /", jsonHandleAddress)
 	log.Print("[+] starting http server")
 	http.ListenAndServe("0.0.0.0:"+apiPort, router)
 }
@@ -267,6 +267,80 @@ func InitLog() {
 	log.Println("-> [.] Listening on port:", apiPort)
 	log.Println("-> [.] Log extra", logFileLine)
 	log.Println("-> [.] nftables set", setName)
+}
+
+func jsonHandleAddress(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	var handleType string
+	switch r.Method {
+	case "DELETE":
+		handleType = "delete"
+	case "PUT":
+	case "POST":
+	default:
+		handleType = "add"
+	}
+
+	log.Println("[o] received jsonHandleAddress request via method", handleType)
+	requiredfields := []string{"ipaddress"}
+	keyVal, err := pgparse.ParseBodyFields(r, requiredfields)
+	if err != nil {
+		log.Println("[x] jsonHandleAddress - errors occured:", err)
+		JSONHandleError(w, r, "jH001", err.Error(), 400)
+		return
+	}
+
+	log.Println("[.] ipaddress", keyVal["ipaddress"])
+
+	ipType, err := checkIPAddressv4(keyVal["ipaddress"])
+	if err != nil {
+		log.Println("[x]", keyVal["ipaddress"], "is not a valid ip address")
+		JSONHandleError(w, r, "jH002", err.Error(), 400)
+		return
+	}
+
+	setDetails, err := NftCheckSet(setName)
+	if err != nil {
+		log.Println("[x] check set error:", err.Error())
+		JSONHandleError(w, r, "jH003", err.Error(), 500)
+		return
+
+	}
+
+	if ipType == "ipv6" && !useipv6 {
+		log.Println("[x] cannot use ipv6")
+		JSONHandleError(w, r, "jh004", "unable to use ipv6 address", 403)
+		return
+	}
+
+	if ipType == "ipv6" {
+		setDetails, err = nftlib.NftListSet(setName + "v6")
+		if err != nil {
+			log.Println("[x] cannot find ipv6 chain", err.Error())
+			JSONHandleError(w, r, "jh005", err.Error(), 500)
+			return
+		}
+	}
+
+	var handleErr error
+	if handleType == "add" {
+		handleErr = nftlib.NftAddSetElement(setDetails, keyVal["ipaddress"])
+	} else if handleType == "delete" {
+		handleErr = nftlib.NftDelSetElement(setDetails, keyVal["ipaddress"])
+	}
+
+	if handleErr != nil {
+		log.Println("[x] updating set element failed", err.Error())
+		JSONHandleError(w, r, "jh006", err.Error(), 500)
+		return
+	}
+
+	log.Println("[+] added / blocked:", keyVal["ipaddress"])
+	jsonresp, _ := sjson.Set("", "status", "ok")
+	jsonresp, _ = sjson.Set(jsonresp, "ipaddress", keyVal["ipaddress"])
+	jsonresp, _ = sjson.Set(jsonresp, "details", "set "+setDetails.Set)
+	io.WriteString(w, jsonresp+"\n")
+
 }
 
 func JSONHandleError(w http.ResponseWriter, r *http.Request, errCode string, errDesc string, httpCode int64) {
