@@ -15,8 +15,7 @@ Simple `GET` actions of add, remove, and flush (see [API usage](#API-usage) for 
 * **[API Usage](#api-usage)**
   * [Add/Block IP](#addblock-ip)
   * [Remove/Unblock IP](#removeunblock-ip)
-  * [Push IP](#push-ip)
-  * [Flush APIBANLOCAL chain](#flush-apibanlocal-chain)
+  * [Flush APIBANLOCAL set](#flush-apibanlocal-set)
 * [License / Warranty](#license--warranty)
 
 ## Super Lazy Install
