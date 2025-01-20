@@ -22,11 +22,11 @@ Simple `GET` actions of add, remove, and flush (see [API usage](#API-usage) for 
 
 Please at least look at the script before blindly running it on your system.
 
-`curl -sSL https://raw.githubusercontent.com/palner/nftables-api/main/install_nftables-api.sh | bash`
+`curl -sSL https://raw.githubusercontent.com/apiban/nftables-api/main/install_nftables-api.sh | bash`
 
 (or for a Pi)
 
-`curl -sSL https://raw.githubusercontent.com/palner/nftables-api/main/install_nftables-api-pi.sh | bash`
+`curl -sSL https://raw.githubusercontent.com/apiban/nftables-api/main/install_nftables-api-pi.sh | bash`
 
 ## Usage
 
