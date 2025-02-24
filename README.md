@@ -6,7 +6,6 @@ Simple `GET` actions of add, remove, and flush (see [API usage](#API-usage) for 
 
 ## Contents
 
-* [Super Lazy Install](#super-lazy-install)
 * [Usage](#usage)
   * [Default Settings](#default-settings)
   * [Example with flags](#example-with-flags)
@@ -18,23 +17,9 @@ Simple `GET` actions of add, remove, and flush (see [API usage](#API-usage) for 
   * [Flush APIBANLOCAL set](#flush-apibanlocal-set)
 * [License / Warranty](#license--warranty)
 
-## Super Lazy Install
-
-Please at least look at the script before blindly running it on your system.
-
-`curl -sSL https://raw.githubusercontent.com/apiban/nftables-api/main/install_nftables-api.sh | bash`
-
-(or for a Pi)
-
-`curl -sSL https://raw.githubusercontent.com/apiban/nftables-api/main/install_nftables-api-pi.sh | bash`
-
 ## Usage
 
 It is recommended that you run nftables-api [as a service](#running-as-a-service-example), however you can run it however you like.
-
-To run, simply set exe permissions (such as `chmod 755 nftables-api`) and run:
-
-`./nftables-api`
 
 ### Default Settings
 
@@ -107,6 +92,22 @@ event_route[htable:expired:ipban] {
 ```
 
 ## API Usage
+
+### List blocked IPs
+
+* **URL**: /
+* **METHOD**: `GET`
+* **Auth**: None
+* **RESPONSE**: 200
+
+### List blocked IPs Examples
+
+* GET `/`
+* RESPONSE `200 OK`
+
+```json
+{"ipv4":["192.168.10.1"],"ipv6":["2001:dead:beef::1"]}
+```
 
 ### Add/Block IP
 

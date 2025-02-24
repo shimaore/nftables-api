@@ -1,5 +1,6 @@
 #!/bin/bash
 #-- install script for nftables-api
+set -e
 
 #-- pgpx.io
 echo ""
@@ -56,23 +57,18 @@ echo ""
 
 #-- download nftables-api
 echo ""
-echo " -> downloading nftables-api"
-mkdir /usr/local/src/nftables-api
-cd /usr/local/src/nftables-api
-wget https://github.com/apiban/nftables-api/raw/main/nftables-api &>/dev/null
-if [ "$?" -eq "0" ]
-then
-  echo "  -o downloaded"
-else
-  echo "  -x download FAILED!!"
-  exit 1
-fi
+echo " -> building nftables-api"
+cd /usr/local/src/
+git clone --depth 1 https://github.com/shimaore/nftables-api.git
+cd nftables-api/
+go build
 
 #-- make local folder and service
 echo ""
 echo " -> making run directory and service"
 mkdir /usr/local/nftables-api
-cp /usr/local/src/nftables-api/nftables-api /usr/local/nftables-api/nftables-api
+mv /usr/local/src/nftables-api/nftables-api /usr/local/nftables-api/nftables-api
+rm -r /usr/local/src/nftables-api
 chmod 755 /usr/local/nftables-api/nftables-api
 cat > /lib/systemd/system/nftables-api.service << EOT
 [Unit]
