@@ -35,6 +35,7 @@ echo ""
 echo " need support? https://palner.com"
 echo ""
 echo " Copyright (C) 2025 Fred Posner"
+echo " Copyright (C) 2025 Stéphane Alnet"
 echo ""
 echo " Permission is hereby granted, free of charge, to any person obtaining a copy"
 echo " of this software and associated documentation files (the \"Software\"), to deal"
@@ -46,7 +47,7 @@ echo " "
 echo " The above copyright notice and this permission notice shall be included in all"
 echo " copies or substantial portions of the Software."
 echo " "
-echo " THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR"
+echo ' THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR'
 echo " IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,"
 echo " FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE"
 echo " AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER"
@@ -58,10 +59,9 @@ echo ""
 #-- download nftables-api
 echo ""
 echo " -> building nftables-api"
-cd /usr/local/src/
-git clone --depth 1 https://github.com/shimaore/nftables-api.git
-cd nftables-api/
-go build
+mkdir /usr/local/src/nftables-api
+cd /usr/local/src/nftables-api
+wget https://github.com/shimaore/nftables-api/releases/download/v1.0/nftables-api &>/dev/null
 
 #-- make local folder and service
 echo ""
