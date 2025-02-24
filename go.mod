@@ -4,7 +4,7 @@ go 1.23.4
 
 require (
 	github.com/apiban/nftlib v0.4.0
-	github.com/palner/pgrtools/pgparse v0.0.0-20241122190412-1e1b6e3066a7
+	github.com/palner/pgrtools/pgparse v0.0.0-20250213215316-324fc1ab3523
 	github.com/tidwall/sjson v1.2.5
 )
 
