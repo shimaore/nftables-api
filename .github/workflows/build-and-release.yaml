@@ -1,0 +1,24 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+    - '*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-go@v5
+      with:
+        go-version: '1.24'
+    - name: Build amd64 version
+      run: GOOS=linux GOARCH=amd64 go build -o nftables-api    main.go
+    - name: Build arm version
+      run: GOOS=linux GOARCH=arm   go build -o nftables-api-pi main.go
+    - uses: ncipollo/release-action@v1
+      with:
+        artifacts: "nftables-api,nftables-api-pi"
