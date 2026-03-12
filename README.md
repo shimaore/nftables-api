@@ -4,6 +4,15 @@ Very simple API for managing local nftables chain: `APIBANLOCAL`
 
 Simple `GET` actions of add, remove, and flush (see [API usage](#API-usage) for more).
 
+## Self-healing nftables setup
+
+On startup (and on each request), `nftables-api` checks for and creates the required nftables table, sets, and drop rules automatically. No manual `nft` commands are needed during provisioning:
+
+- If the `APIBANLOCAL` / `APIBANLOCALv6` sets do not exist, they are created with a 1-day timeout.
+- If the `INPUT` chain drop rules (`ip saddr @APIBANLOCAL drop`, `ip6 saddr @APIBANLOCALv6 drop`) are missing, they are added.
+
+This means `user_data` / cloud-init scripts only need to start the service — no `nft add table` / `nft add set` / `nft add rule` commands required.
+
 ## Contents
 
 * [Usage](#usage)
