@@ -43,6 +43,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strings"
 
 	"github.com/apiban/nftlib"
 	"github.com/palner/pgrtools/pgparse"
@@ -493,6 +494,61 @@ func NftAddv6Set(setname string) error {
 	return nil
 }
 
+// nftDropRuleExists reports whether a rule referencing @setname already exists
+// in the given chain. Uses a string search on the JSON output — @SETNAME only
+// appears in rule expressions that reference the named set.
+func nftDropRuleExists(family, table, chain, setname string) (bool, error) {
+	out, err := exec.Command("nft", "-j", "list", "chain", family, table, chain).Output()
+	if err != nil {
+		return false, err
+	}
+	return strings.Contains(string(out), "@"+setname), nil
+}
+
+// nftEnsureDropRules checks that input drop rules exist for setname (and its v6
+// counterpart when IPv6 is enabled), and adds them if missing. This self-heals
+// sets that were pre-created without drop rules (e.g. by user_data.tpl).
+func nftEnsureDropRules(setname string) {
+	inputChains, err := nftlib.NftGetInputChains()
+	if err != nil || len(inputChains) == 0 {
+		log.Println("[x] nftEnsureDropRules: cannot find input chains:", err)
+		return
+	}
+
+	chainDetails, err := nftlib.NftGetChainDetails(inputChains[0])
+	if err != nil {
+		log.Println("[x] nftEnsureDropRules: cannot get chain details:", err)
+		return
+	}
+
+	exists, err := nftDropRuleExists(chainDetails.Family, chainDetails.Table, chainDetails.Chain, setname)
+	if err != nil {
+		log.Println("[x] nftEnsureDropRules: cannot check drop rule:", err)
+	} else if !exists {
+		log.Println("[!] nftEnsureDropRules: drop rule missing for", setname, "— adding")
+		if err := nftlib.NftAddSetRuleInput(chainDetails, setname); err != nil {
+			log.Println("[x] nftEnsureDropRules: failed to add drop rule:", err)
+		} else {
+			log.Println("[+] nftEnsureDropRules: drop rule added for", setname)
+		}
+	}
+
+	if useipv6 {
+		v6set := setname + "v6"
+		exists, err = nftDropRuleExists(chainDetails.Family, chainDetails.Table, chainDetails.Chain, v6set)
+		if err != nil {
+			log.Println("[x] nftEnsureDropRules: cannot check v6 drop rule:", err)
+		} else if !exists {
+			log.Println("[!] nftEnsureDropRules: drop rule missing for", v6set, "— adding")
+			if err := nftlib.NftAddSetRulev6Input(chainDetails, v6set); err != nil {
+				log.Println("[x] nftEnsureDropRules: failed to add v6 drop rule:", err)
+			} else {
+				log.Println("[+] nftEnsureDropRules: drop rule added for", v6set)
+			}
+		}
+	}
+}
+
 func NftCheckSet(setname string) (nftlib.NFTABLES, error) {
 	currentSet, err := nftlib.NftListSet(setname)
 	if err != nil {
@@ -540,6 +596,8 @@ func NftCheckSet(setname string) (nftlib.NFTABLES, error) {
 			}
 		}
 	}
+
+	nftEnsureDropRules(setname)
 
 	return currentSet, nil
 }
