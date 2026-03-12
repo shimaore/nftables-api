@@ -104,6 +104,7 @@ func main() {
 	}
 
 	InitLog()
+	NftCheckSet(setName)
 	router := http.NewServeMux()
 	router.HandleFunc("GET /add/{ipaddress}", addIPAddress)
 	router.HandleFunc("GET /addip/{ipaddress}", addIPAddress)
