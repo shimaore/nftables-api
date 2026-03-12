@@ -15,6 +15,7 @@ This means `user_data` / cloud-init scripts only need to start the service — n
 
 ## Contents
 
+* [Self-healing nftables setup](#self-healing-nftables-setup)
 * [Usage](#usage)
   * [Default Settings](#default-settings)
   * [Example with flags](#example-with-flags)
@@ -35,12 +36,13 @@ It is recommended that you run nftables-api [as a service](#running-as-a-service
 * port: `8084`
 * log: `/var/log/nftables-api.log`
 * setname: `APIBANLOCAL`
+* set timeout: `1d` (elements expire automatically after 1 day)
 * logextra: `false` (add filename to log)
 * ipv6: `true` (set to false to disable ipv6. ipv4 is always on)
 
 Compiled `nftables-api` will work for most linux distributions and `nftables-api-pi` will work for most Raspberry Pi distributions.
 
-You can also compile the program using `go build main.go`.
+You can also compile the program using `go build .` (or `CGO_ENABLED=0 go build .` for a fully static binary).
 
 ### Example with flags
 
@@ -94,6 +96,9 @@ if (!pike_check_req()) {
   exit;
 }
 ... 
+// Optional: call /unblock when Kamailio's htable entry expires.
+// nftables-api manages its own 1-day element timeout, so this is
+// a nice-to-have for early unblocking rather than a strict requirement.
 event_route[htable:expired:ipban] {
   xlog("mytable record expired $shtrecord(key) => $shtrecord(value)\n");
   http_client_query("http://localhost:8084/unblock/$shtrecord(key)", "$var(apinfo)");
