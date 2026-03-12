@@ -41,10 +41,12 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"runtime"
 
 	"github.com/apiban/nftlib"
 	"github.com/palner/pgrtools/pgparse"
+	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 )
 
@@ -592,24 +594,56 @@ func removeIPAddress(w http.ResponseWriter, r *http.Request) {
 }
 
 
-func NftListv4(setname string) ([]string, error) {
-	currentSet, err := nftlib.NftListSet(setname)
+// nftListSetElements lists the current elements of an nftables set.
+//
+// nftlib.NftListSet is broken for timeout-flagged sets (nftlib v0.4.0):
+//   1. It calls `nft list sets` (plural) which returns schema only, no elements.
+//   2. Even if elements were present, it calls value.String() which returns the
+//      raw JSON object instead of the IP for timeout elements.
+//
+// We work around both bugs: use nftlib only to discover family+table, then
+// call `nft list set <family> <table> <setname>` directly and parse correctly.
+func nftListSetElements(setname string) ([]string, error) {
+	meta, err := nftlib.NftListSet(setname)
 	if err != nil {
-		return []string{}, err
+		return nil, err
 	}
-	return currentSet.Elements, nil
+
+	out, err := exec.Command("nft", "-j", "list", "set", meta.Family, meta.Table, setname).Output()
+	if err != nil {
+		return nil, err
+	}
+
+	if !gjson.Valid(string(out)) {
+		return nil, errors.New("invalid json from nft list set")
+	}
+
+	var elems []string
+	elements := gjson.Get(string(out), "nftables.#(set.name==\""+setname+"\").set.elem")
+	if elements.Exists() {
+		elements.ForEach(func(_, value gjson.Result) bool {
+			// Timeout sets: {"elem":{"val":"1.2.3.4","expires":9944}}
+			if val := value.Get("elem.val"); val.Exists() {
+				elems = append(elems, val.String())
+			} else {
+				// Non-timeout sets: plain string
+				elems = append(elems, value.String())
+			}
+			return true
+		})
+	}
+
+	return elems, nil
+}
+
+func NftListv4(setname string) ([]string, error) {
+	return nftListSetElements(setname)
 }
 
 func NftListv6(setname string) ([]string, error) {
 	if useipv6 {
-		v6set := setname + "v6"
-		currentSet, err := nftlib.NftListSet(v6set)
-		if err != nil {
-			return []string{}, err
-		}
-		return currentSet.Elements, nil
+		return nftListSetElements(setname + "v6")
 	}
-
 	return []string{}, nil
 }
 
