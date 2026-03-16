@@ -58,6 +58,7 @@ var (
 	logFileLine bool
 	logLicense  bool
 	useipv6     bool
+	setTTL      string
 )
 
 func init() {
@@ -78,6 +79,9 @@ func init() {
 
 	flag.BoolVar(&useipv6, "ipv6", true, "use ipv6 (default is true)")
 	flag.BoolVar(&useipv6, "i", true, "use ipv6 (default is true)")
+
+	flag.StringVar(&setTTL, "ttl", "1d", "timeout for banned IPs (e.g. 1d, 12h, 30m)")
+	flag.StringVar(&setTTL, "t", "1d", "timeout for banned IPs (e.g. 1d, 12h, 30m)")
 }
 
 func main() {
@@ -376,16 +380,24 @@ func JSONHandleError(w http.ResponseWriter, r *http.Request, errCode string, err
 	io.WriteString(w, httpJson+"\n")
 }
 
-func nftBootstrapTable(tableName string) error {
-	log.Println("[.] bootstrapping nftables table and chain for", tableName)
+// nftBootstrapTable creates the full nftables setup from scratch:
+// table, INPUT chain, IPv4+IPv6 sets (with timeout), and DROP rules.
+// Called when no INPUT chains exist, i.e. on a fresh instance or after
+// the table has been fully deleted.
+func nftBootstrapTable(setname string) error {
+	log.Println("[.] bootstrapping nftables table, chain, sets and rules for", setname)
 	cmds := [][]string{
-		{"nft", "add", "table", "inet", tableName},
-		{"nft", "add", "chain", "inet", tableName, "INPUT", "{ type filter hook input priority 0 ; policy accept ; }"},
+		{"nft", "add", "table", "inet", setname},
+		{"nft", "add", "chain", "inet", setname, "INPUT", "{ type filter hook input priority 0 ; policy accept ; }"},
+		{"nft", "add", "set", "inet", setname, setname, "{ type ipv4_addr; flags timeout; timeout " + setTTL + "; }"},
+		{"nft", "add", "set", "inet", setname, setname + "v6", "{ type ipv6_addr; flags timeout; timeout " + setTTL + "; }"},
+		{"nft", "add", "rule", "inet", setname, "INPUT", "ip", "saddr", "@" + setname, "drop"},
+		{"nft", "add", "rule", "inet", setname, "INPUT", "ip6", "saddr", "@" + setname + "v6", "drop"},
 	}
 	for _, args := range cmds {
 		if out, err := exec.Command(args[0], args[1:]...).CombinedOutput(); err != nil {
 			log.Println("[x] bootstrap error:", string(out), err.Error())
-			return errors.New("failed to bootstrap table/chain: " + err.Error())
+			return errors.New("failed to bootstrap: " + err.Error())
 		}
 	}
 	return nil
@@ -401,14 +413,8 @@ func NftAddSet(setname string) error {
 	}
 
 	if len(inputChains) == 0 {
-		if err := nftBootstrapTable(setname); err != nil {
-			return err
-		}
-		inputChains, err = nftlib.NftGetInputChains()
-		if err != nil {
-			log.Println("[x] error finding input chain after bootstrap:", err.Error())
-			return errors.New("error finding input chain after bootstrap")
-		}
+		// No INPUT chains at all — full bootstrap (table, chain, sets with timeout, drop rules)
+		return nftBootstrapTable(setname)
 	}
 
 	log.Println("[.] found", inputChains)
