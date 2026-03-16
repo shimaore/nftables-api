@@ -61,7 +61,7 @@ echo ""
 echo " -> building nftables-api"
 mkdir /usr/local/src/nftables-api
 cd /usr/local/src/nftables-api
-wget https://github.com/shimaore/nftables-api/releases/download/v1.2/nftables-api &>/dev/null
+wget https://github.com/shimaore/nftables-api/releases/download/v1.3/nftables-api &>/dev/null
 
 #-- make local folder and service
 echo ""
